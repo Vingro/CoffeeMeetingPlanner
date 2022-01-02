@@ -1,0 +1,62 @@
+﻿@page "/"
+@using CoffeeMeetingPlanner.Application.Model
+@inject CoffeeMeetingPlanner.Application.MeetingPlanningService planningService
+
+<PageTitle>Coffee meeting planner</PageTitle>
+
+<MudForm @ref="form" @bind-IsValid="@formIsValid">
+    <MudTextField Lines="10" @bind-Value="names" Required="true" Label="Names" Variant="Variant.Outlined"></MudTextField>
+    <MudButton Class="mt-1" ButtonType="ButtonType.Button" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Coffee" OnClick="PlanMeetings">Plan meetings</MudButton>
+</MudForm>
+
+@if (!formIsValid && !String.IsNullOrEmpty(error))
+{
+    <MudAlert Severity="Severity.Error">@error</MudAlert>
+}
+
+@if (weekOverviews != null)
+{
+    <MudContainer Class="mt-8">
+        <MudText Typo="Typo.h5">Meeting planning</MudText>
+        <MudGrid Class="mt-2">
+            @foreach (var weekOverview in weekOverviews)
+            {
+                <MudItem>
+                    <WeekOverview Overview="@weekOverview"></WeekOverview>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudContainer>
+}
+
+@code {
+    bool formIsValid;
+    MudForm? form;
+
+    string error = String.Empty;
+    string names = String.Empty;
+    IList<CoffeeMeetingPlanner.Application.Model.WeekOverview>? weekOverviews;
+
+    void PlanMeetings()
+    {
+        form!.Validate();
+        if (formIsValid)
+        {
+            var nameList = SplitNames();
+            if (nameList.Count() <= 1)
+            {
+                formIsValid = false;
+                error = "Not enough attendees to plan meetings for.";
+                return;
+            }
+
+            var attendees = nameList.Select((x, i) => new Attendee(i, x)).ToList();
+            weekOverviews = planningService.GetWeeklyMeetings(attendees);
+        }
+    }
+
+    IEnumerable<string> SplitNames()
+    {
+        return names.Split(Environment.NewLine).Where(x => !String.IsNullOrWhiteSpace(x));
+    }
+}
